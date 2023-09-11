@@ -1,7 +1,6 @@
 ## Overview
 
-This example app demonstrates the following features:
-- Display a map.
+
 
 ## Build instructions
 
