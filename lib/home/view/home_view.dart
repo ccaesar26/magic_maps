@@ -9,9 +9,11 @@ import 'package:gem_kit/api/gem_landmarkstore.dart';
 import 'package:gem_kit/api/gem_landmarkstoreservice.dart';
 import 'package:gem_kit/api/gem_mapviewpreferences.dart';
 import 'package:gem_kit/api/gem_mapviewrendersettings.dart';
-import 'package:gem_kit/api/gem_routingservice.dart';
+import 'package:gem_kit/api/gem_routingpreferences.dart';
+import 'package:gem_kit/api/gem_routingservice.dart' as gem;
 import 'package:gem_kit/api/gem_sdksettings.dart';
 import 'package:gem_kit/api/gem_types.dart';
+import 'package:gem_kit/gem_kit_basic.dart';
 import 'package:gem_kit/gem_kit_map_controller.dart';
 import 'package:gem_kit/gem_kit_position.dart';
 import 'package:gem_kit/widget/gem_kit_map.dart';
@@ -34,6 +36,11 @@ class _HomePageState extends State<HomePage> {
   late LandmarkStore? _favoritesStore;
   late bool _isLandmarkFavorite;
   final favoritesStoreName = 'Favorites';
+  late gem.RoutingService _routingService;
+  List<Coordinates> waypoints = [];
+  List<gem.Route> shownRoutes = [];
+
+  bool haveRoutes = false;
 
   final _token =
       "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiIyNjEwNDBmNy05ODVhLTRiYjUtYTVhYS04MmFjZWQ2ZGM0YmIiLCJleHAiOjE2OTY1Mzk2MDAsImlzcyI6IkdlbmVyYWwgTWFnaWMiLCJqdGkiOiIwOTI2ZGQ5NC0yNjdkLTQ5MWMtYTM5ZS00ZDIxMDQzY2Q0MGQiLCJuYmYiOjE2OTM5ODM2NzV9.xaj0aijgsmHmvLzBZo6FoLjqkbaAgT4YopHf6pGkuD1kjCHfJXTVjq1bAFxn2m-PFXMT4wJh1ZOITqtrolC5Mg";
@@ -41,6 +48,10 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    waypoints.add(
+        Coordinates(latitude: 48.85682120481962, longitude: 2.343751354197309));
+    waypoints.add(Coordinates(
+        latitude: 50.846442672966944, longitude: 4.345870353765759));
   }
 
   Future<void> onMapCreated(GemMapController controller) async {
@@ -60,10 +71,12 @@ class _HomePageState extends State<HomePage> {
     _positionService = await PositionService.create(controller.mapId);
 
     SdkSettings.setAppAuthorization(_token);
+
+    _routingService = await gem.RoutingService.create(_mapController.mapId);
   }
 
   // Custom method for navigating to search screen
-  _onPressed(BuildContext context) async {
+  _onSearchPressed(BuildContext context) async {
 // Taking the coordinates at the center of the screen as reference coordinates for search.
     final x = MediaQuery.of(context).size.width / 2;
     final y = MediaQuery.of(context).size.height / 2;
@@ -88,7 +101,7 @@ class _HomePageState extends State<HomePage> {
     }
 
 // Creating a list of landmarks to highlight.
-    LandmarkList landmarkList = await LandmarkList.create(_mapController.mapId);
+    gem.LandmarkList landmarkList = await gem.LandmarkList.create(_mapController.mapId);
 
     if (result is! Landmark) {
       return;
@@ -106,6 +119,91 @@ class _HomePageState extends State<HomePage> {
     await _mapController.centerOnCoordinates(coords);
   }
 
+  _onPressed(List<Coordinates> waypoints, BuildContext context) async {
+    // Create a landmark list
+    final landmarkWaypoints =
+    await gem.LandmarkList.create(_mapController.mapId);
+
+    // Create landmarks from coordinates and add them to the list
+    for (final wp in waypoints) {
+      var landmark = Landmark.create();
+      await landmark.setCoordinates(
+          Coordinates(latitude: wp.latitude, longitude: wp.longitude));
+      landmarkWaypoints.push_back(landmark);
+    }
+
+    final routePreferences = RoutePreferences();
+
+    var result = await _routingService.calculateRoute(
+        landmarkWaypoints, routePreferences, (err, routes) async {
+      if (err != GemError.success || routes == null) {
+        return;
+      } else {
+        // Get the controller's preferences
+        final mapViewPreferences = await _mapController.preferences();
+        // Get the routes from the preferences
+        final routesMap = await mapViewPreferences.routes();
+        //Get the number of routes
+        final routesSize = await routes.size();
+
+        for (int i = 0; i < routesSize; i++) {
+          final route = await routes.at(i);
+          shownRoutes.add(route);
+
+          final timeDistance = await route.getTimeDistance();
+
+          final totalDistance = convertDistance(
+              timeDistance.unrestrictedDistanceM +
+                  timeDistance.restrictedDistanceM);
+
+          final totalTime = convertDuration(
+              timeDistance.unrestrictedTimeS + timeDistance.restrictedTimeS);
+          // Add labels to the routes
+          await routesMap.add(route, i == 0,
+              label: '$totalDistance \n $totalTime');
+        }
+        // Select the first route as the main one
+        final mainRoute = await routes.at(0);
+
+        await _mapController.centerOnRoute(mainRoute);
+      }
+    });
+    haveRoutes = true;
+
+    setState(() {});
+    return result;
+  }
+
+  _removeRoutes(List<gem.Route> routes) async {
+    final prefs = _mapController.preferences();
+    final routesMap = await prefs.routes();
+
+    for (final route in routes) {
+      routesMap.remove(route);
+    }
+    haveRoutes = false;
+    setState(() {});
+  }
+
+  String convertDistance(int meters) {
+    if (meters >= 1000) {
+      double kilometers = meters / 1000;
+      return '${kilometers.toStringAsFixed(1)} km';
+    } else {
+      return '${meters.toString()} m';
+    }
+  }
+
+  String convertDuration(int seconds) {
+    int hours = seconds ~/ 3600; // Number of whole hours
+    int minutes = (seconds % 3600) ~/ 60; // Number of whole minutes
+
+    String hoursText = (hours > 0) ? '$hours h ' : ''; // Hours text
+    String minutesText = '$minutes min'; // Minutes text
+
+    return hoursText + minutesText;
+  }
+
   final focusNode = FocusNode();
 
   @override
@@ -121,10 +219,6 @@ class _HomePageState extends State<HomePage> {
             bottom: Radius.circular(12),
           ),
         ),
-        // systemOverlayStyle: SystemUiOverlayStyle(
-        //   statusBarColor: Theme.of(context).colorScheme.inversePrimary,
-        //   systemNavigationBarColor: Colors.transparent,
-        // ),
         titleSpacing: 4,
         leading: IconButton(
           icon: const Icon(Icons.settings_rounded),
@@ -135,11 +229,10 @@ class _HomePageState extends State<HomePage> {
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFFDEEDE4),
           ),
-          onPressed: () => _onPressed(context),
+          onPressed: () => _onSearchPressed(context),
           child: const SizedBox(
             height: 56,
             child: Row(
-              //mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Icon(Icons.search_rounded),
                 SizedBox(
@@ -183,9 +276,14 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(
               height: 12,
             ),
-            FloatingActionButton(
-              key: const Key('homeView_directions_floatingActionButton'),
-              onPressed: () {},
+            haveRoutes ? FloatingActionButton(
+              key: const Key('homeView_directions_red_floatingActionButton'),
+              onPressed: () => _removeRoutes(shownRoutes),
+              backgroundColor: Colors.red,
+              child: const Icon(Icons.cancel_rounded),
+            ) : FloatingActionButton(
+              key: const Key('homeView_directions_default_floatingActionButton'),
+              onPressed: () => _onPressed(waypoints, context),
               child: const Icon(Icons.directions_rounded),
             ),
           ],
@@ -275,7 +373,7 @@ class _HomePageState extends State<HomePage> {
     ));
 
     // Create a list of landmarks to highlight.
-    LandmarkList landmarkList = await LandmarkList.create(_mapController.mapId);
+    gem.LandmarkList landmarkList = await gem.LandmarkList.create(_mapController.mapId);
 
     if (result is! Landmark) {
       return;
