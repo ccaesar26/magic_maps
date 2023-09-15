@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:gem_kit/api/gem_coordinates.dart';
 import 'package:gem_kit/api/gem_routingservice.dart' as gem;
+import 'package:gem_kit/gem_kit_map_controller.dart';
 import 'package:magic_maps/src/colors.dart';
 
-import 'favorites/favorites.dart';
-import 'home/home.dart';
+import 'pages/favorites/favorites.dart';
+import 'pages/home/home.dart';
+import 'pages/search/search.dart';
 
 class MagicMapsApp extends StatelessWidget {
   const MagicMapsApp({super.key});
@@ -13,9 +17,14 @@ class MagicMapsApp extends StatelessWidget {
       case '/':
         return MaterialPageRoute(builder: (context) => const HomePage());
       case '/favorites':
+        return MaterialPageRoute(builder: (context) => const FavoritesPage());
+      case '/search':
         return MaterialPageRoute(
-            builder: (context) => FavoritesPage(
-                landmarkList: settings.arguments as gem.LandmarkList));
+            builder: (context) {
+              return SearchPage(
+                coordinates: settings.arguments as Coordinates,
+              );
+            });
       default:
         return MaterialPageRoute(builder: (context) => const NotFoundPage());
     }
@@ -23,15 +32,28 @@ class MagicMapsApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (context) => HomeCubit(),
+        ),
+        BlocProvider(
+          create: (context) => FavoritesCubit(),
+        ),
+        BlocProvider(
+          create: (context) => SearchCubit(),
+        ),
+      ],
+      child: MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Hello Map',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: ColorConstants.gulfStream),
         useMaterial3: true,
       ),
-      home: const HomePage(),
-    );
+      initialRoute: '/',
+      onGenerateRoute: generateRoute,
+    ));
   }
 }
 

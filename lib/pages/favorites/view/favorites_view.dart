@@ -1,14 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:gem_kit/api/gem_routingservice.dart';
-import 'package:gem_kit/api/gem_landmark.dart';
+import 'package:magic_maps/pages/favorites/cubit/favorites_cubit.dart';
+import 'package:magic_maps/pages/home/cubit/home_cubit.dart';
 
 import 'favorites_item.dart';
 
 class FavoritesPage extends StatefulWidget {
-  final LandmarkList landmarkList;
-  const FavoritesPage({super.key, required this.landmarkList});
+  const FavoritesPage({super.key});
 
   @override
   State<FavoritesPage> createState() => _FavoritesPageState();
@@ -18,18 +18,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
   @override
   void initState() {
     super.initState();
-  }
-
-  // Utility method to convert a LandmarkList object to a Dart list of landmarks
-  Future<List<Landmark>> _fromLandmarkListToListOfLandmarks() async {
-    var length = await widget.landmarkList.size();
-    List<Landmark> landmarks = [];
-
-    for (int i = 0; i < length; i++) {
-      Landmark landmark = await widget.landmarkList.at(i);
-      landmarks.add(landmark);
-    }
-    return landmarks.reversed.toList();
+    context.read<FavoritesCubit>().fromLandmarkListToListOfLandmarks(context.read<HomeCubit>().favoritesList);
   }
 
   @override
@@ -47,23 +36,30 @@ class _FavoritesPageState extends State<FavoritesPage> {
         automaticallyImplyLeading: true,
         title: const Text("Favorites list"),
       ),
-      body: FutureBuilder<List<Landmark>>(
-          future: _fromLandmarkListToListOfLandmarks(),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) return Container();
+      body: BlocBuilder<FavoritesCubit, FavoritesState>(
+          builder: (context, state) {
+            if (state.isLoading != null && state.isLoading!) {
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
+            }
+            if (state.landmarks == null) {
+              return const SizedBox();
+            }
             return ListView.builder(
               padding: const EdgeInsets.all(8),
-              itemCount: snapshot.data!.length,
+              itemCount: state.landmarks!.length,
               controller: ScrollController(),
               itemBuilder: (context, index) {
-                final lmk = snapshot.data!.elementAt(index);
+                final lmk = state.landmarks!.elementAt(index);
                 return FavoritesItem(
                   onTap: () => Navigator.of(context).pop(lmk),
                   landmark: lmk,
                 );
               },
             );
-          }),
+        },
+      ),
     );
   }
 }

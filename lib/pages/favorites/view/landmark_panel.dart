@@ -133,3 +133,32 @@ class LandmarkPanel extends StatelessWidget {
     );
   }
 }
+
+class LandmarkPanelLoading extends StatelessWidget {
+  const LandmarkPanelLoading({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 184,
+      width: MediaQuery.of(context).size.width,
+      decoration: BoxDecoration(
+        color: ColorConstants.navajoWhite,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(12),
+          topRight: Radius.circular(12),
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: Offset(0, -5),
+          ),
+        ],
+      ),
+      child: Container(
+        alignment: Alignment.center,
+        child: const CircularProgressIndicator(),
+      ),
+    );
+  }
+}
