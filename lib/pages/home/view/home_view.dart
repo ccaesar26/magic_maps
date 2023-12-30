@@ -23,10 +23,10 @@ class HomePage extends StatelessWidget {
           ),
         ),
         titleSpacing: 4,
-        leading: IconButton(
-          icon: const Icon(Icons.settings_rounded),
-          onPressed: () {},
-        ),
+        //leading:  IconButton(
+        //   icon: const Icon(Icons.settings_rounded),
+        //   onPressed: () {},
+        // ),
         title: ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFFDEEDE4),
@@ -49,46 +49,64 @@ class HomePage extends StatelessWidget {
             ),
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.favorite_rounded),
-            onPressed: () =>
-                context.read<HomeCubit>().onFavouritesButtonPressed(context),
-          )
-        ],
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.inversePrimary,
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    'Magic Maps',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                    ),
+                  ),
+                  SizedBox(
+                    height: 8,
+                  ),
+                  Text(
+                    'Version 1.0.0',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.favorite_rounded),
+              title: const Text('Saved Places'),
+              onTap: () {
+                Navigator.pop(context);
+                context.read<HomeCubit>().onFavouritesButtonPressed(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings_rounded),
+              title: const Text('Preferences'),
+              onTap: () {
+                Navigator.pop(context);
+                //context.read<HomeCubit>().onSettingsButtonPressed(context);
+              },
+            ),
+          ],
+        ),
       ),
       body: Center(
         child: GemMap(
           onMapCreated: context.read<HomeCubit>().onMapCreated,
         ),
       ),
-      floatingActionButton: SizedBox(
-        child: BlocBuilder<HomeCubit, HomeState>(
-          builder: (context, state) {
-            if (state.haveRoutes == null || state.haveRoutes == false) {
-              return _defaultFloatingActionButton(context);
-            } else {
-              return SizedBox(
-                child: Column(
-                  children: [
-                    _defaultFloatingActionButton(context),
-                    const SizedBox(
-                      height: 12,
-                    ),
-                    FloatingActionButton(
-                      heroTag: 'homeView_directions_red_floatingActionButton',
-                      key: const Key('homeView_directions_red_floatingActionButton'),
-                      onPressed: context.read<HomeCubit>().removeRoutes,
-                      backgroundColor: Colors.red,
-                      child: const Icon(Icons.cancel_rounded),
-                    ),
-                  ],
-                ),
-              );
-            }
-          },
-        ),
-      ),
+      floatingActionButton: _defaultFloatingActionButton(context),
       bottomSheet: BlocBuilder<HomeCubit, HomeState>(
         builder: (context, state) {
           if (state.showPanel == null || state.showPanel == false) {
@@ -114,37 +132,77 @@ class HomePage extends StatelessWidget {
   }
 }
 
+// Widget _defaultFloatingActionButton(BuildContext context) {
+//   return Wrap(
+//     direction: Axis.vertical,
+//     children: <Widget>[
+//       FloatingActionButton(
+//         heroTag: 'homeView_gps_floatingActionButton',
+//         key: const Key('homeView_gps_floatingActionButton'),
+//         onPressed: context.read<HomeCubit>().onFollowPositionButtonPressed,
+//         shape: const CircleBorder(),
+//         child: const Icon(Icons.gps_fixed_rounded),
+//       ),
+//       const SizedBox(
+//         height: 12,
+//       ),
+//       BlocBuilder<HomeCubit, HomeState>(builder: (context, state) {
+//         if (state.haveRoutes == null || state.haveRoutes == false) {
+//           return FloatingActionButton(
+//             key: const Key('homeView_directions_default_floatingActionButton'),
+//             onPressed: context.read<HomeCubit>().calculateRouteToLandmark,
+//             child: const Icon(Icons.directions_rounded),
+//           );
+//         } else {
+//           return FloatingActionButton(
+//             heroTag: 'homeView_directions_red_floatingActionButton',
+//             key: const Key('homeView_directions_red_floatingActionButton'),
+//             onPressed: context.read<HomeCubit>().removeRoutes,
+//             backgroundColor: Colors.red,
+//             child: const Icon(Icons.cancel_rounded),
+//           );
+//         }
+//       }),
+//     ],
+//   );
+// }
+
 Widget _defaultFloatingActionButton(BuildContext context) {
-  return Column(
-    mainAxisAlignment: MainAxisAlignment.end,
-    children: <Widget>[
-      FloatingActionButton(
-        heroTag: 'homeView_gps_floatingActionButton',
-        key: const Key('homeView_gps_floatingActionButton'),
-        onPressed: context.read<HomeCubit>().onFollowPositionButtonPressed,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.gps_fixed_rounded),
-      ),
-      const SizedBox(
-        height: 12,
-      ),
-      BlocBuilder<HomeCubit, HomeState>(builder: (context, state) {
-        if (state.haveRoutes == null || state.haveRoutes == false) {
-          return FloatingActionButton(
-            key: const Key('homeView_directions_default_floatingActionButton'),
-            onPressed: context.read<HomeCubit>().calculateRouteToLandmark,
-            child: const Icon(Icons.directions_rounded),
-          );
-        } else {
-          return FloatingActionButton(
-            heroTag: 'homeView_directions_red_floatingActionButton',
-            key: const Key('homeView_directions_red_floatingActionButton'),
-            onPressed: context.read<HomeCubit>().removeRoutes,
-            backgroundColor: Colors.red,
-            child: const Icon(Icons.cancel_rounded),
-          );
-        }
-      }),
-    ],
-  );
+  return BlocBuilder<HomeCubit, HomeState>(builder: (context, state) {
+    if (state.showPanel != null && state.showPanel == true) {
+      return const SizedBox();
+    }
+    return Wrap(
+      direction: Axis.vertical,
+      children: <Widget>[
+        FloatingActionButton(
+          heroTag: 'homeView_gps_floatingActionButton',
+          key: const Key('homeView_gps_floatingActionButton'),
+          onPressed: context.read<HomeCubit>().onFollowPositionButtonPressed,
+          shape: const CircleBorder(),
+          child: const Icon(Icons.gps_fixed_rounded),
+        ),
+        const SizedBox(
+          height: 12,
+        ),
+        BlocBuilder<HomeCubit, HomeState>(builder: (context, state) {
+          if (state.haveRoutes == null || state.haveRoutes == false) {
+            return FloatingActionButton(
+              key: const Key('homeView_directions_default_floatingActionButton'),
+              onPressed: context.read<HomeCubit>().calculateRouteToLandmark,
+              child: const Icon(Icons.directions_rounded),
+            );
+          } else {
+            return FloatingActionButton(
+              heroTag: 'homeView_directions_red_floatingActionButton',
+              key: const Key('homeView_directions_red_floatingActionButton'),
+              onPressed: context.read<HomeCubit>().removeRoutes,
+              backgroundColor: Colors.red,
+              child: const Icon(Icons.cancel_rounded),
+            );
+          }
+        }),
+      ],
+    );
+  });
 }
